@@ -73,7 +73,7 @@ python backend/app.py
 ```
 
 7. Finally, open the local web page:
-- [http://127.0.0.1:5000](http://127.0.0.1:5000)
+[http://127.0.0.1:5000](http://127.0.0.1:5000)
 
 ## Demo workflow
 
