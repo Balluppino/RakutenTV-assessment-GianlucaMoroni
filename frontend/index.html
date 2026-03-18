@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Content Enrichment System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="top">
+        <div class="logo-wrap">
+          <img
+            class="logo-image"
+            src="{{ url_for('static', filename='Rakuten_TV_logo.svg.png') }}"
+            alt="Rakuten TV logo"
+          >
+        </div>
+        <div class="assessment">Technical Assessment - Gianluca Paolo Moroni</div>
+      </header>
+
+      <section class="hero">
+        <h1>AI-POWERED CONTENT ENRICHMENT SYSTEM</h1>
+      </section>
+
+      <form id="demoForm">
+        <section class="panel">
+          <div class="config">
+            <div class="config-box">
+              <strong class="config-title">UPLOAD FILE (JSON/CSV)</strong>
+              <input
+                id="content_file"
+                name="content_file"
+                type="file"
+                accept=".json,.csv"
+                required
+              >
+            </div>
+
+            <div class="config-box">
+              <strong class="config-title">ITEMS TO PROCESS</strong>
+              <input
+                id="max_items"
+                name="max_items"
+                type="number"
+                min="1"
+                max="50"
+                value="{{ default_max_items }}"
+              >
+            </div>
+
+            <div class="config-box">
+              <strong class="config-title">PROVIDER</strong>
+              <div class="config-content config-readout">
+                <span class="config-value">{{ provider_name }}</span>
+              </div>
+            </div>
+
+            <div class="config-box">
+              <strong class="config-title">MODEL</strong>
+              <div class="config-content config-readout">
+                <span class="config-value mono">{{ model_name }}</span>
+              </div>
+            </div>
+          </div>
+
+          {% if config_error %}
+            <div class="alert">{{ config_error }}</div>
+          {% endif %}
+        </section>
+
+        <section class="panel">
+          <div class="head centered-head">
+            <div>
+              <h2 class="prompt-heading">Which prompt mode would you like to use?</h2>
+            </div>
+          </div>
+
+          <div class="prompts">
+            {% for key, label in mode_labels.items() %}
+              <label class="pick" for="mode_{{ key }}">
+                <input
+                  id="mode_{{ key }}"
+                  type="radio"
+                  name="mode"
+                  value="{{ key }}"
+                  {% if loop.first %}checked{% endif %}
+                >
+                <div class="prompt">
+                  <div class="row">
+                    <h3>{{ label }}</h3>
+                  </div>
+                  <p>{{ mode_prompts[key] }}</p>
+                </div>
+              </label>
+            {% endfor %}
+          </div>
+
+          <div class="cta">
+            <button
+              id="processButton"
+              class="primary"
+              type="submit"
+              {% if config_error %}disabled{% endif %}
+            >
+              Generate enriched metadata
+            </button>
+          </div>
+        </section>
+      </form>
+
+      <section id="processingSection" class="panel hidden">
+        <div class="head centered-head">
+            <div>
+              <h2 class="prompt-heading">What is happening in the background?</h2>
+            </div>
+          </div>
+
+        <div class="status">
+          <strong>LIVE PROCESSING STATUS</strong>
+          <div id="progressText" class="progress-text">0%</div>
+          <div class="bar">
+            <span id="progressBar"></span>
+          </div>
+        </div>
+
+        <div class="workflow">
+          <div id="stepList" class="steps"></div>
+
+          <div class="slide">
+            <span id="slideKicker" class="kicker">Step 1</span>
+            <h3 id="slideTitle">Loop over content items</h3>
+            <p id="slideDescription"></p>
+            <div id="slidePromptBlock" class="slide-prompt hidden">
+              <pre id="slidePromptText"></pre>
+            </div>
+            <div class="end">
+              <button id="backStepButton" class="secondary" type="button">Back</button>
+              <button id="nextStepButton" class="secondary" type="button">Next</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="resultsReveal" class="hidden">
+          <div id="downloadActions" class="actions"></div>
+          <div id="resultsPanel" class="placeholder" style="margin-top: 18px;">
+            Waiting for results...
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script id="processStepsData" type="application/json">{{ process_steps|tojson }}</script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>
