@@ -1,0 +1,107 @@
+[
+  {
+    "content_id": "1001",
+    "title": "The Shawshank Redemption",
+    "year": 1994,
+    "basic_description": "Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency.",
+    "existing_genres": ["Drama"]
+  },
+  {
+    "content_id": "1002",
+    "title": "Inception",
+    "year": 2010,
+    "basic_description": "A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O.",
+    "existing_genres": ["Action", "Sci-Fi"]
+  },
+  {
+    "content_id": "1003",
+    "title": "Parasite",
+    "year": 2019,
+    "basic_description": "Greed and class discrimination threaten the newly formed symbiotic relationship between the wealthy Park family and the destitute Kim clan.",
+    "existing_genres": ["Thriller"]
+  },
+  {
+    "content_id": "1004",
+    "title": "The Grand Budapest Hotel",
+    "year": 2014,
+    "basic_description": "A writer encounters the owner of an aging high-class hotel, who tells him of his early years serving as a lobby boy in the hotel's glorious years under an exceptional concierge.",
+    "existing_genres": ["Comedy", "Drama"]
+  },
+  {
+    "content_id": "1005",
+    "title": "Planet Earth II",
+    "year": 2016,
+    "basic_description": "David Attenborough returns with a new wildlife documentary that shows life in a variety of habitats.",
+    "existing_genres": ["Documentary"]
+  },
+  {
+    "content_id": "1006",
+    "title": "Breaking Bad",
+    "year": 2008,
+    "basic_description": "A high school chemistry teacher diagnosed with inoperable lung cancer turns to manufacturing and selling methamphetamine in order to secure his family's future.",
+    "existing_genres": ["Crime", "Drama"]
+  },
+  {
+    "content_id": "1007",
+    "title": "Amélie",
+    "year": 2001,
+    "basic_description": "Amélie is an innocent and naive girl in Paris with her own sense of justice. She decides to help those around her and, along the way, discovers love.",
+    "existing_genres": ["Romance", "Comedy"]
+  },
+  {
+    "content_id": "1008",
+    "title": "The Dark Knight",
+    "year": 2008,
+    "basic_description": "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice.",
+    "existing_genres": ["Action", "Crime"]
+  },
+  {
+    "content_id": "1009",
+    "title": "Moonlight",
+    "year": 2016,
+    "basic_description": "A young African-American man grapples with his identity and sexuality while experiencing the everyday struggles of childhood, adolescence, and burgeoning adulthood.",
+    "existing_genres": ["Drama"]
+  },
+  {
+    "content_id": "1010",
+    "title": "Spirited Away",
+    "year": 2001,
+    "basic_description": "During her family's move to the suburbs, a sullen 10-year-old girl wanders into a world ruled by gods, witches, and spirits, and where humans are changed into beasts.",
+    "existing_genres": ["Animation", "Fantasy"]
+  },
+  {
+    "content_id": "1011",
+    "title": "Casablanca",
+    "year": 1942,
+    "basic_description": "A cynical expatriate American cafe owner struggles to decide whether or not to help his former lover and her fugitive husband escape the Nazis in French Morocco.",
+    "existing_genres": ["Drama", "Romance"]
+  },
+  {
+    "content_id": "1012",
+    "title": "Get Out",
+    "year": 2017,
+    "basic_description": "A young African-American visits his white girlfriend's parents for the weekend, where his simmering uneasiness about their reception of him eventually reaches a boiling point.",
+    "existing_genres": ["Horror", "Thriller"]
+  },
+  {
+    "content_id": "1013",
+    "title": "The Office",
+    "year": 2005,
+    "basic_description": "A mockumentary on a group of typical office workers, where the workday consists of ego clashes, inappropriate behavior, and tedium.",
+    "existing_genres": ["Comedy"]
+  },
+  {
+    "content_id": "1014",
+    "title": "Mad Max: Fury Road",
+    "year": 2015,
+    "basic_description": "In a post-apocalyptic wasteland, a woman rebels against a tyrannical ruler in search for her homeland with the aid of a group of female prisoners, a psychotic worshiper, and a drifter named Max.",
+    "existing_genres": ["Action", "Adventure"]
+  },
+  {
+    "content_id": "1015",
+    "title": "Jiro Dreams of Sushi",
+    "year": 2011,
+    "basic_description": "A documentary on 85-year-old sushi master Jiro Ono, his renowned Tokyo restaurant, and his relationship with his son and eventual heir, Yoshikazu.",
+    "existing_genres": ["Documentary"]
+  }
+]
