@@ -9,8 +9,7 @@ The goal is to let a user upload a JSON or CSV file, enrich the metadata in one 
 |-- backend/
 |   |-- app.py
 |   |-- prompts.py
-|   |-- .env.example
-|   `-- .env
+|   `-- .env.example
 |-- frontend/
 |   |-- index.html
 |   |-- styles.css
@@ -20,8 +19,7 @@ The goal is to let a user upload a JSON or CSV file, enrich the metadata in one 
 |-- .gitignore
 |-- README.md
 |-- content_sample.csv
-|-- content_sample.json
-`-- outputs/
+`-- content_sample.json
 ```
 
 ## Setup
