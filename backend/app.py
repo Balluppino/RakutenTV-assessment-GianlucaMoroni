@@ -34,7 +34,7 @@ PROJECT_ROOT = BASE_DIR.parent
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 OUTPUT_DIR = PROJECT_ROOT / "outputs"
 
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 MAX_ITEMS_CAP = 50
 PROVIDER_LABELS = {
     "openai": "OpenAI",
@@ -206,14 +206,34 @@ def read_int_env(name: str, default: int) -> int:
 DEFAULT_MAX_ITEMS = read_int_env("DEFAULT_MAX_ITEMS", 10)
 
 
+def read_api_key_env(name: str) -> str | None:
+    raw_value = os.getenv(name, "").strip()
+    if not raw_value:
+        return None
+
+    # Treat placeholders and accidental inline comments as missing values.
+    if raw_value.startswith("#") or raw_value.startswith("your_"):
+        return None
+
+    return raw_value
+
+
 def get_configured_provider() -> str:
     configured_provider = os.getenv("LLM_PROVIDER", "").strip().lower()
-    has_openai_key = bool(os.getenv("OPENAI_API_KEY"))
-    has_google_key = bool(os.getenv("GOOGLE_API_KEY"))
+    has_openai_key = bool(read_api_key_env("OPENAI_API_KEY"))
+    has_google_key = bool(read_api_key_env("GOOGLE_API_KEY"))
 
     if configured_provider:
         if configured_provider not in PROVIDER_LABELS:
             raise ValueError("LLM_PROVIDER must be either 'openai' or 'google'.")
+        if configured_provider == "openai" and not has_openai_key:
+            raise ValueError(
+                "LLM_PROVIDER is set to 'openai' but OPENAI_API_KEY is missing or invalid."
+            )
+        if configured_provider == "google" and not has_google_key:
+            raise ValueError(
+                "LLM_PROVIDER is set to 'google' but GOOGLE_API_KEY is missing or invalid."
+            )
         return configured_provider
 
     if has_openai_key and not has_google_key:
@@ -481,6 +501,8 @@ def run_enrichment_pipeline(
                 progress_callback(
                     "metadata_generation",
                     f"Generating metadata for item {item_index} of {total_items}: {item.title}",
+                    current_item_index=item_index,
+                    total_items=total_items,
                 )
             generated_raw = generation_chain.invoke({"item_json": item_payload})
             generated_metadata = GeneratedMetadata.model_validate(generated_raw)
@@ -489,6 +511,8 @@ def run_enrichment_pipeline(
                 progress_callback(
                     "llm_judge",
                     f"Running LLM judge for item {item_index} of {total_items}: {item.title}",
+                    current_item_index=item_index,
+                    total_items=total_items,
                 )
             judge_raw = judge_chain.invoke(
                 {
@@ -567,6 +591,8 @@ def create_job_state(
         "processing_errors_preview": [],
         "raw_item_count": 0,
         "completed_step_count": 0,
+        "current_item_index": 0,
+        "progress_percent": 0,
     }
 
 
@@ -611,6 +637,7 @@ def build_job_payload(job: dict) -> dict:
         "job_id": job["job_id"],
         "status": job["status"],
         "status_message": job["status_message"],
+        "progress_percent": job.get("progress_percent", 0),
         "provider_label": job["provider_label"],
         "model": job["model"],
         "mode_label": job["mode_label"],
@@ -634,6 +661,15 @@ def set_job_step(job_id: str, step_key: str, status_message: str, **extra) -> No
     step_index = next(
         index for index, step in enumerate(PROCESS_STEPS) if step["key"] == step_key
     )
+    progress_percent = extra.pop("progress_percent", None)
+    if progress_percent is None:
+        progress_percent = calculate_progress_percent(
+            {
+                **jobs[job_id],
+                "current_step_key": step_key,
+                **extra,
+            }
+        )
     update_job(
         job_id,
         current_step_key=step_key,
@@ -641,8 +677,36 @@ def set_job_step(job_id: str, step_key: str, status_message: str, **extra) -> No
         completed_step_count=step_index,
         status="running",
         status_message=status_message,
+        progress_percent=progress_percent,
         **extra,
     )
+
+
+def calculate_progress_percent(job: dict) -> int:
+    if job.get("status") == "completed":
+        return 100
+
+    step_key = job.get("current_step_key")
+    selected_item_count = max(int(job.get("selected_item_count") or 0), 1)
+    current_item_index = max(int(job.get("current_item_index") or 0), 0)
+
+    if step_key == "ingestion":
+        return 10
+
+    if step_key == "prompt_construction":
+        return 20
+
+    if step_key in {"metadata_generation", "llm_judge"}:
+        completed_units = max(current_item_index - 1, 0) * 2
+        if step_key == "llm_judge":
+            completed_units += 1
+        total_units = max(selected_item_count * 2, 1)
+        return min(90, round(20 + (completed_units / total_units) * 70))
+
+    if step_key == "export":
+        return 95 if job.get("status") != "completed" else 100
+
+    return 0
 
 
 def run_processing_job(
@@ -667,6 +731,7 @@ def run_processing_job(
             raw_item_count=len(raw_items),
             validation_error_count=len(validation_errors),
             validation_errors_preview=validation_errors[:5],
+            progress_percent=calculate_progress_percent(jobs[job_id]),
         )
 
         if not normalized_items:
@@ -685,10 +750,11 @@ def run_processing_job(
             items_to_process,
             provider,
             mode,
-            progress_callback=lambda step_key, message: set_job_step(
+            progress_callback=lambda step_key, message, **extra: set_job_step(
                 job_id,
                 step_key,
                 message,
+                **extra,
             ),
         )
         update_job(
@@ -696,6 +762,7 @@ def run_processing_job(
             processed_count=len(results),
             processing_error_count=len(processing_errors),
             processing_errors_preview=processing_errors[:5],
+            current_item_index=len(items_to_process),
         )
 
         if not results:
@@ -710,6 +777,7 @@ def run_processing_job(
             job_id,
             "export",
             "Persisting outputs and preparing downloadable JSON and CSV files.",
+            progress_percent=95,
         )
         response_payload = persist_results(
             source_filename=source_filename,
@@ -734,6 +802,7 @@ def run_processing_job(
             current_step_key="export",
             current_step_index=len(PROCESS_STEPS) - 1,
             completed_step_count=len(PROCESS_STEPS),
+            progress_percent=100,
         )
     except ValueError as exc:
         update_job(
