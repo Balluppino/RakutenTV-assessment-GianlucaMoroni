@@ -6,7 +6,7 @@ Rakuten TV has thousands of movies and TV shows in its catalog. Currently, the m
 
 **Your task**: Build a prototype system that uses AI to automatically enrich content metadata.
 
-**My approach**: The solution enables users to upload a JSON or CSV file, enrich metadata in one of two styles (controlled or explorative), evaluate each generated result using an LLM-based judge, and download the enriched output in both JSON and CSV formats. The system is implemented with a lightweight HTML/JavaScript frontend and a Python Flask backend, with API keys securely managed through environment variables.
+**My approach**: I developed a solution that enables users to upload a JSON or CSV file, enrich metadata in one of two styles (controlled or explorative), evaluate each generated result using an LLM-based judge, and download the enriched output in both JSON and CSV formats. The system is implemented with a lightweight HTML/JavaScript frontend and a Python Flask backend, with API keys securely managed through environment variables.
 
 ## Project structure
 
