@@ -3,10 +3,13 @@ const state = {
   jobId: null,
   pollHandle: null,
   latestJob: null,
+  walkthroughCompleted: false,
 };
 
 const dom = {
   form: document.getElementById("demoForm"),
+  contentFile: document.getElementById("content_file"),
+  fileError: document.getElementById("fileError"),
   processButton: document.getElementById("processButton"),
   processingSection: document.getElementById("processingSection"),
   progressBar: document.getElementById("progressBar"),
@@ -27,6 +30,7 @@ const dom = {
 const processSteps = JSON.parse(
   document.getElementById("processStepsData").textContent
 );
+const allowedFileExtensions = new Set(["json", "csv"]);
 
 function escapeHtml(value) {
   return String(value)
@@ -45,6 +49,53 @@ function chips(values, extraClass = "") {
   return values
     .map((value) => `<span class="chip ${extraClass}">${escapeHtml(value)}</span>`)
     .join("");
+}
+
+function renderField(label, content, extraClass = "") {
+  return [
+    `<div class="preview-field ${extraClass}">`,
+    `<strong>${escapeHtml(label)}</strong>`,
+    `<div>${content}</div>`,
+    "</div>",
+  ].join("");
+}
+
+function showFileError(message) {
+  dom.fileError.textContent = message;
+  dom.fileError.classList.remove("hidden");
+}
+
+function clearFileError() {
+  dom.fileError.textContent = "";
+  dom.fileError.classList.add("hidden");
+}
+
+function getFileExtension(filename) {
+  const parts = filename.split(".");
+  if (parts.length < 2) {
+    return "";
+  }
+
+  return parts.at(-1).toLowerCase();
+}
+
+function validateSelectedFile() {
+  const file = dom.contentFile.files?.[0];
+
+  if (!file) {
+    clearFileError();
+    return true;
+  }
+
+  const extension = getFileExtension(file.name);
+  if (allowedFileExtensions.has(extension)) {
+    clearFileError();
+    return true;
+  }
+
+  dom.contentFile.value = "";
+  showFileError("Only JSON or CSV files are allowed.");
+  return false;
 }
 
 function errorLabel(entry) {
@@ -85,18 +136,32 @@ function renderCards(items) {
   const cards = items
     .slice(0, 3)
     .map((item) => {
-      const audience = item.metadata.target_audience.join(", ") || "None";
       return [
         '<article class="preview">',
         `<h3>${escapeHtml(item.title)}</h3>`,
         '<div class="chips">',
         `<span class="chip mono">${escapeHtml(item.content_id)}</span>`,
         `<span class="chip">${escapeHtml(item.year || "Year n/a")}</span>`,
-        `<span class="chip score">Score ${escapeHtml(item.judge.score)}</span>`,
+        `<span class="chip score">Score ${escapeHtml(item.score)}</span>`,
         "</div>",
-        `<p>${escapeHtml(item.basic_description)}</p>`,
-        `<div class="chips">${chips(item.metadata.detailed_genres)}</div>`,
-        `<p><strong>Audience:</strong> ${escapeHtml(audience)}</p>`,
+        '<div class="preview-grid">',
+        renderField("existing_genres", chips(item.existing_genres || [])),
+        renderField(
+          "ENRICHED_detailed_genres",
+          chips(item.enriched_metadata?.detailed_genres || [], "score"),
+          "preview-field-enriched"
+        ),
+        renderField(
+          "ENRICHED_similar_content_suggestions",
+          chips(item.enriched_metadata?.similar_content_suggestions || [], "score"),
+          "preview-field-enriched"
+        ),
+        renderField(
+          "ENRICHED_themes",
+          chips(item.enriched_metadata?.themes || [], "score"),
+          "preview-field-enriched"
+        ),
+        "</div>",
         "</article>",
       ].join("");
     })
@@ -121,9 +186,11 @@ function updateSlide() {
 
   if (state.slideIndex >= processSteps.length - 1) {
     dom.resultsReveal.classList.remove("hidden");
-    dom.nextStepButton.disabled = true;
-    dom.nextStepButton.style.visibility = "hidden";
+    dom.nextStepButton.textContent = "Done";
+    dom.nextStepButton.disabled = state.walkthroughCompleted;
+    dom.nextStepButton.style.visibility = "visible";
   } else {
+    state.walkthroughCompleted = false;
     dom.nextStepButton.textContent = "Next";
     dom.nextStepButton.disabled = false;
     dom.nextStepButton.style.visibility = "visible";
@@ -151,6 +218,10 @@ function renderStepList() {
 }
 
 function getStepVisualState(index) {
+  if (state.walkthroughCompleted && index === processSteps.length - 1) {
+    return "completed";
+  }
+
   if (index < state.slideIndex) {
     return "completed";
   }
@@ -250,8 +321,10 @@ async function pollJob() {
 dom.nextStepButton.addEventListener("click", () => {
   if (state.slideIndex < processSteps.length - 1) {
     state.slideIndex += 1;
-    updateSlide();
+  } else {
+    state.walkthroughCompleted = true;
   }
+  updateSlide();
 });
 
 dom.backStepButton.addEventListener("click", () => {
@@ -261,11 +334,20 @@ dom.backStepButton.addEventListener("click", () => {
   }
 });
 
+dom.contentFile.addEventListener("change", () => {
+  validateSelectedFile();
+});
+
 dom.form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
+  if (!validateSelectedFile()) {
+    return;
+  }
+
   state.slideIndex = 0;
   state.latestJob = null;
+  state.walkthroughCompleted = false;
   updateSlide();
 
   dom.processingSection.classList.remove("hidden");

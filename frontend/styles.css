@@ -20,7 +20,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: "Segoe UI", Arial, sans-serif;
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
   color: var(--text);
   background: #000;
 }
@@ -151,9 +151,9 @@ p {
   flex-direction: column;
   justify-content: flex-start;
   gap: 10px;
-  padding: 20px;
-  border: 1px solid var(--line);
-  background: linear-gradient(180deg, var(--card), var(--card2));
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .config-title {
@@ -244,9 +244,11 @@ input[type="file"] {
 }
 
 .prompt {
+  position: relative;
   padding: 22px;
   cursor: pointer;
   transition: 0.16s;
+  overflow: hidden;
 }
 
 .pick input:checked + .prompt {
@@ -279,6 +281,44 @@ input[type="file"] {
   white-space: pre-wrap;
 }
 
+.prompt-sections {
+  display: grid;
+  gap: 10px;
+}
+
+.prompt-section {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.prompt-section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.prompt-letter {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.prompt-copy p {
+  font-size: 0.97rem;
+  line-height: 1.58;
+  margin: 0;
+}
+
 .cta {
   display: flex;
   justify-content: center;
@@ -306,6 +346,7 @@ input[type="file"] {
 }
 
 .primary:disabled,
+.dl:disabled,
 .secondary:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -490,6 +531,7 @@ input[type="file"] {
 .results {
   display: grid;
   gap: 14px;
+  min-width: 0;
 }
 
 .actions {
@@ -497,18 +539,20 @@ input[type="file"] {
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 18px;
+  justify-content: center;
 }
 
 .dl {
-  min-width: 170px;
-  padding: 15px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  min-width: 220px;
+  padding: 17px 24px;
+  border: 0;
   color: var(--text);
-  background: linear-gradient(180deg, var(--card), var(--card2));
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  box-shadow: 0 18px 34px rgba(228, 0, 43, 0.28);
 }
 
 .results {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   margin-top: 18px;
 }
 
@@ -516,6 +560,11 @@ input[type="file"] {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   text-align: center;
+}
+
+.results-head {
+  margin-top: 26px;
+  margin-bottom: 0;
 }
 
 .chips {
@@ -534,6 +583,42 @@ input[type="file"] {
 }
 
 .score {
+  color: #a5f0d4;
+  background: rgba(25, 180, 124, 0.14);
+}
+
+.preview-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  min-width: 0;
+}
+
+.preview-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.preview h3 {
+  color: var(--text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.preview-field strong {
+  color: var(--text);
+  font-size: 0.86rem;
+  letter-spacing: normal;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+.preview-field-enriched strong {
+  color: #a5f0d4;
+}
+
+.preview-field-enriched .chip {
   color: #a5f0d4;
   background: rgba(25, 180, 124, 0.14);
 }

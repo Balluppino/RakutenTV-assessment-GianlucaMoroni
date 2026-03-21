@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI-Powered Content Enrichment System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap"
+    >
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   </head>
   <body>
@@ -35,6 +42,7 @@
                 accept=".json,.csv"
                 required
               >
+              <div id="fileError" class="alert hidden" role="alert"></div>
             </div>
 
             <div class="config-box">
@@ -90,7 +98,16 @@
                   <div class="row">
                     <h3>{{ label }}</h3>
                   </div>
-                  <p>{{ mode_prompts[key] }}</p>
+                  <div class="prompt-sections">
+                    {% for section in mode_prompt_sections[key] %}
+                      <div class="prompt-section">
+                        <div class="prompt-letter">{{ section.letter }}</div>
+                        <div class="prompt-copy">
+                          <p>{{ section.body }}</p>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
                 </div>
               </label>
             {% endfor %}
@@ -142,10 +159,15 @@
         </div>
 
         <div id="resultsReveal" class="hidden">
-          <div id="downloadActions" class="actions"></div>
-          <div id="resultsPanel" class="placeholder" style="margin-top: 18px;">
-            Waiting for results...
+          <div class="head centered-head results-head">
+            <div>
+              <h2 class="prompt-heading">Preview of results</h2>
+            </div>
           </div>
+          <div id="resultsPanel" class="placeholder" style="margin-top: 18px;">
+            The metadata enrichment is still running...
+          </div>
+          <div id="downloadActions" class="actions"></div>
         </div>
       </section>
     </main>
