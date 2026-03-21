@@ -1,4 +1,4 @@
-# CONTENT METADATA PROCESSING SYSTEM
+# AI-POWERED CONTENT ENRICHMENT SYSTEM
 
 ## The Challenge
 
@@ -6,7 +6,7 @@ Rakuten TV has thousands of movies and TV shows in its catalog. Currently, the m
 
 **Your task**: Build a prototype system that automatically enriches content metadata.
 
-**My approach**: I developed a solution that enables users to upload a JSON or CSV file, enrich metadata in one of two styles (controlled or explorative), evaluate each generated result through a structured scoring step, and download the enriched output in both JSON and CSV formats. The system is implemented with a lightweight HTML/JavaScript frontend and a Python Flask backend, with API keys securely managed through environment variables.
+**My approach**: I developed a solution that enables users to upload a JSON or CSV file, enrich metadata in one of two styles (controlled or explorative), evaluate each generated result using an LLM-based judge, and download the enriched output in both JSON and CSV formats. The system is implemented with a lightweight HTML/JavaScript frontend and a Python Flask backend, with API keys securely managed through environment variables.
 
 ## Project structure
 
@@ -95,7 +95,7 @@ python backend/app.py
 
 - **HTML/CSS/JavaScript**: frontend for file upload, polling, progress tracking, and result rendering.
 - **Flask**: lightweight backend with simple routing, file handling, background job execution, and download support.
-- **LangChain**: framework for composing prompts and building provider-agnostic structured chains, reducing boilerplate and standardizing provider integration.
+- **LangChain**: framework for composing prompts and building provider-agnostic structured chains, reducing boilerplate and standardizing integration with OpenAI and Google models.
 - **Pydantic**: data validation library used to enforce schemas for metadata and evaluation scores, ensuring reliable and debuggable outputs.
 - **`.env` configuration**: keeps secrets out of the codebase and allows easy configuration of providers, models, and ports.
 
@@ -104,9 +104,11 @@ python backend/app.py
 All the prompts live in `prompts.py`.
 
 Main elements:
-- metadata generation prompts for the two available modes
-- the request template used for each content item
-- the evaluation prompts used to score each generated result
+- `METADATA_ENRICHMENT_SYSTEM_PROMPT["controlled"]`
+- `METADATA_ENRICHMENT_SYSTEM_PROMPT["explorative"]`
+- `METADATA_ENRICHMENT_USER_PROMPT`
+- `JUDGE_SYSTEM_PROMPT`
+- `JUDGE_USER_PROMPT`
 
 ## Error handling
 
@@ -114,5 +116,5 @@ The app handles errors in layers, so invalid data does not automatically break t
 
 - Frontend validation: only `.json` and `.csv` files are accepted in the upload field. 
 - Record-level validation errors: each uploaded row/item is normalized into the internal schema. If `title` or `basic_description` is missing, that record is skipped and stored in `validation_errors`. Invalid `year` values do not fail the record and missing `existing_genres` values are treated as empty.
-- Processing errors: if the model call fails, that item is stored in `processing_errors` and the pipeline continues with the remaining items.
-- UI behavior & output: the system provides real-time feedback through the frontend and the errors are reported in the field `error_type` which displays `validation` for input issues, `processing` for processing failures, and empty for successful cases.
+- Processing errors: if the LLM call fails, that item is stored in `processing_errors` and the pipeline continues with the remaining items.
+- UI behavior & output: the system provides real-time feedback through the frontend and the errors are reported in the field `error_type` which displays `validation` for input issues, `processing` for enrichment failures, and empty for successful cases.
