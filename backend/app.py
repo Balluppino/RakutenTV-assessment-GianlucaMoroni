@@ -124,26 +124,26 @@ PROCESS_STEPS = [
         "title": "Prompt construction",
         "description": (
             "Based on the selected mode (controlled, with T=0.2, or explorative, with T=0.7), provider, and model, the system assembles "
-            "the prompt with which the LLM will be called. The prompt is composed of the instructions and enrichment "
+            "the prompt with which the selected model will be called. The prompt is composed of the instructions and enrichment "
             "strategy and the specific content item to process."
         ),
     },
     {
         "key": "metadata_generation",
-        "title": "Call LLM to generate the metadata",
+        "title": "Generate structured metadata",
         "description": (
             "For each selected content item, the generation chain sends the item "
-            "payload to the LLM and validates the returned structured "
+            "payload to the selected model and validates the returned structured "
             "metadata against the expected schema. If the call fails or the "
             "response doesn't match the schema, the item is stored as a "
-            "processing error and does not move to the judging step."
+            "processing error and does not move to the evaluation step."
         ),
     },
     {
         "key": "llm_judge",
-        "title": "Call LLM as a judge",
+        "title": "Evaluate generated metadata",
         "description": (
-            "After the enriched metadata is generated, an evaluation step is performed using the same LLM "
+            "After the enriched metadata is generated, an evaluation step is performed using the same model "
             "configured with a lower temperature (T=0.1) and a specialized evaluation prompt. "
             "This step assesses the output quality and assigns a score from 1 to 100."
         ),
@@ -488,7 +488,7 @@ def run_enrichment_pipeline(
             if progress_callback:
                 progress_callback(
                     "llm_judge",
-                    f"Running LLM judge for item {item_index} of {total_items}: {item.title}",
+                    f"Evaluating output quality for item {item_index} of {total_items}: {item.title}",
                 )
             judge_raw = judge_chain.invoke(
                 {

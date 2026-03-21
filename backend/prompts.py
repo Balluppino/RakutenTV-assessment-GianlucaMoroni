@@ -1,4 +1,4 @@
-# In this file are displayed the system and user prompts used for both the metadata enrichment step and the judge step. 
+# In this file are displayed the system and user prompts used for both the metadata generation step and the evaluation step.
 # System and user prompts are separated intentionally for better readability and maintenance.
 # System prompt defines stable behavioral rules and output expectations, while user prompt carries the concrete request and dynamic payload from the backend.
 
@@ -33,7 +33,7 @@ METADATA_ENRICHMENT_USER_PROMPT = """Enrich the metadata for the following conte
                                     {item_json}
                                     """
 
-# JUDGE STEP - SYSTEM PROMPT.
+# EVALUATION STEP - SYSTEM PROMPT.
 JUDGE_SYSTEM_PROMPT = (
     "You are evaluating metadata generated for a movie/TV catalog enrichment workflow. "
     "The output is used in structured systems and must be accurate, consistent, and useful for tagging and discovery.\n"
@@ -45,7 +45,7 @@ JUDGE_SYSTEM_PROMPT = (
     "Be objective, strict, and concise."
 )
 
-# JUDGE STEP - USER PROMPT.
+# EVALUATION STEP - USER PROMPT.
 JUDGE_USER_PROMPT = """Review the generated metadata for the following content item.
                     
                     Requested style:
