@@ -16,19 +16,17 @@ from pydantic import BaseModel, Field, ValidationError
 
 try:
     from prompts import (
-        GENERATION_USER_PROMPT,
+        METADATA_ENRICHMENT_USER_PROMPT,
         JUDGE_SYSTEM_PROMPT,
         JUDGE_USER_PROMPT,
-        MODE_LABELS,
-        MODE_PROMPTS,
+        METADATA_ENRICHMENT_SYSTEM_PROMPT,
     )
 except ModuleNotFoundError:
     from backend.prompts import (
-        GENERATION_USER_PROMPT,
+        METADATA_ENRICHMENT_USER_PROMPT,
         JUDGE_SYSTEM_PROMPT,
         JUDGE_USER_PROMPT,
-        MODE_LABELS,
-        MODE_PROMPTS,
+        METADATA_ENRICHMENT_SYSTEM_PROMPT,
     )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -41,6 +39,74 @@ MAX_ITEMS_CAP = 50
 PROVIDER_LABELS = {
     "openai": "OpenAI",
     "google": "Google",
+}
+MODE_LABELS = {
+    "controlled": "Controlled",
+    "explorative": "Explorative",
+}
+MODE_PROMPT_SECTIONS = {
+    "controlled": [
+        {
+            "letter": "C",
+            "title": "Context",
+            "body": "You are working within a client-facing catalog workflow to enrich metadata for movies and TV content.",
+        },
+        {
+            "letter": "R",
+            "title": "Role",
+            "body": "You are a precise metadata enrichment assistant.",
+        },
+        {
+            "letter": "A",
+            "title": "Action",
+            "body": (
+                "Produce metadata that is grounded in the provided input and easy to operationalize in production. Do not "
+                "over-infer plot details or invent unsupported facts. Keep lists concise, practical, and taxonomy-friendly, "
+                "and use clean genre and audience labels without duplicates."
+            ),
+        },
+        {
+            "letter": "F",
+            "title": "Format",
+            "body": "Return only content that matches the requested structured schema.",
+        },
+        {
+            "letter": "T",
+            "title": "Tone",
+            "body": "Use a controlled style that is precise, consistent, and broadly reusable.",
+        },
+    ],
+    "explorative": [
+        {
+            "letter": "C",
+            "title": "Context",
+            "body": "You are working within a client-facing catalog workflow to enrich metadata for movies and TV content.",
+        },
+        {
+            "letter": "R",
+            "title": "Role",
+            "body": "You are a creative but disciplined metadata enrichment assistant.",
+        },
+        {
+            "letter": "A",
+            "title": "Action",
+            "body": (
+                "Produce metadata that is richer and more expressive while remaining suitable for catalog use. Expand the output "
+                "with nuanced moods, themes, viewing contexts, and similar content suggestions. Stay grounded in the provided input "
+                "and avoid inventing unsupported factual details."
+            ),
+        },
+        {
+            "letter": "F",
+            "title": "Format",
+            "body": "Return only content that matches the requested structured schema.",
+        },
+        {
+            "letter": "T",
+            "title": "Tone",
+            "body": "Use an explorative style that is expressive, insightful, slightly creative, and still catalog-safe.",
+        },
+    ],
 }
 PROCESS_STEPS = [
     {
@@ -57,8 +123,9 @@ PROCESS_STEPS = [
         "key": "prompt_construction",
         "title": "Prompt construction",
         "description": (
-            "Based on the selected mode (controlled or explorative), provider, and model, the system assembles "
-            "the system prompt. The prompt is composed of the instructions and enrichment strategy and the specific content item to process."
+            "Based on the selected mode (controlled, with T=0.2, or explorative, with T=0.7), provider, and model, the system assembles "
+            "the prompt with which the LLM will be called. The prompt is composed of the instructions and enrichment "
+            "strategy and the specific content item to process."
         ),
     },
     {
@@ -66,9 +133,9 @@ PROCESS_STEPS = [
         "title": "Call LLM to generate the metadata",
         "description": (
             "For each selected content item, the generation chain sends the item "
-            "payload to the primary model and validates the returned structured "
-            "metadata against the expected schema. If the model call fails or the "
-            "response does not match the schema, the item is stored as a "
+            "payload to the LLM and validates the returned structured "
+            "metadata against the expected schema. If the call fails or the "
+            "response doesn't match the schema, the item is stored as a "
             "processing error and does not move to the judging step."
         ),
     },
@@ -76,22 +143,21 @@ PROCESS_STEPS = [
         "key": "llm_judge",
         "title": "Call LLM as a judge",
         "description": (
-            "After metadata is generated successfully, a second model pass reviews "
-            "the output, assigns a score from 1 to 100."
+            "After the enriched metadata is generated, an evaluation step is performed using the same LLM "
+            "configured with a lower temperature (T=0.1) and a specialized evaluation prompt. "
+            "This step assesses the output quality and assigns a score from 1 to 100."
         ),
         "prompt_text": (
-            f"SYSTEM PROMPT:\n{JUDGE_SYSTEM_PROMPT}\n\n"
-            f"USER PROMPT:\n{JUDGE_USER_PROMPT}"
+            f"PROMPT:\n{JUDGE_SYSTEM_PROMPT}\n\n"
         ),
     },
     {
         "key": "export",
         "title": "Return results in JSON and CSV",
         "description": (
-            "At the end of the run, the system creates a dedicated output folder, "
-            "builds a final summary of the batch, saves successful results together "
-            "with validation and processing errors, writes both JSON and CSV files, "
-            "and returns preview data plus download links to the frontend."
+            "At the end of the run, the system creates a dedicated output folder, saves successful results "
+            "together with validation and processing errors, returns preview data and download URLs for the "
+            "enriched metadata in both JSON and CSV formats."
         ),
     },
 ]
@@ -185,8 +251,8 @@ def build_chat_model(provider: str, temperature: float):
 def build_generation_chain(provider: str, mode: str):
     prompt = ChatPromptTemplate.from_messages(
         [
-            ("system", MODE_PROMPTS[mode]),
-            ("human", GENERATION_USER_PROMPT),
+            ("system", METADATA_ENRICHMENT_SYSTEM_PROMPT[mode]),
+            ("human", METADATA_ENRICHMENT_USER_PROMPT),
         ]
     )
     temperature = 0.2 if mode == "controlled" else 0.7
@@ -281,6 +347,41 @@ def parse_csv_items(raw_bytes: bytes) -> list[dict]:
 
     if not rows:
         raise ValueError("The CSV file does not contain any content items.")
+
+    expected_fields = {"content_id", "title", "year", "basic_description", "existing_genres"}
+    if expected_fields.issubset(set(reader.fieldnames or [])):
+        repaired_rows = []
+        malformed_rows_detected = False
+
+        for row in rows:
+            if (
+                row.get("content_id")
+                and not row.get("title")
+                and not row.get("year")
+                and not row.get("basic_description")
+                and not row.get("existing_genres")
+                and "," in row["content_id"]
+            ):
+                malformed_rows_detected = True
+                parsed_line = next(csv.reader([row["content_id"]]))
+                if len(parsed_line) != 5:
+                    raise ValueError(
+                        "The CSV file contains malformed rows and could not be parsed."
+                    )
+                repaired_rows.append(
+                    {
+                        "content_id": parsed_line[0],
+                        "title": parsed_line[1],
+                        "year": parsed_line[2],
+                        "basic_description": parsed_line[3],
+                        "existing_genres": parsed_line[4],
+                    }
+                )
+            else:
+                repaired_rows.append(row)
+
+        if malformed_rows_detected:
+            return repaired_rows
 
     return rows
 
@@ -652,78 +753,127 @@ def join_list(values: list[str]) -> str:
     return " | ".join(values)
 
 
+def build_enriched_metadata(metadata: dict) -> dict:
+    return {
+        "detailed_genres": metadata["detailed_genres"],
+        "mood": metadata["mood_tone_descriptors"],
+        "themes": metadata["key_themes"],
+        "target_audience": metadata["target_audience"],
+        "similar_content_suggestions": metadata["similar_content_suggestions"],
+        "content_warnings": metadata["content_warnings"],
+        "viewing_context": metadata["viewing_context_recommendations"],
+    }
+
+
 def build_export_results(results: list[dict]) -> list[dict]:
     export_results = []
 
     for result in results:
-        metadata = dict(result["metadata"])
-        metadata.pop("enrichment_rationale", None)
-
         export_results.append(
             {
-                "mode": result.get("mode"),
                 "content_id": result["content_id"],
                 "title": result["title"],
                 "year": result["year"],
                 "basic_description": result["basic_description"],
                 "existing_genres": result["existing_genres"],
-                "metadata": metadata,
-                "judge": {
-                    "score": result["judge"]["score"],
-                },
+                "enriched_metadata": build_enriched_metadata(result["metadata"]),
+                "score": result["judge"]["score"],
+                "prompt_mode": result.get("prompt_mode", ""),
+                "error_type": "",
             }
         )
 
     return export_results
 
 
-def write_csv_results(csv_path: Path, results: list[dict], run_summary: dict) -> None:
+def build_export_error_entries(
+    entries: list[dict],
+    prompt_mode: str,
+    error_type: str,
+) -> list[dict]:
+    export_entries = []
+
+    for entry in entries:
+        export_entries.append(
+            {
+                "content_id": entry.get("content_id", ""),
+                "title": entry.get("title", ""),
+                "year": "",
+                "basic_description": "",
+                "existing_genres": "",
+                "enriched_metadata": {
+                    "detailed_genres": [],
+                    "mood": [],
+                    "themes": [],
+                    "target_audience": [],
+                    "similar_content_suggestions": [],
+                    "content_warnings": [],
+                    "viewing_context": [],
+                },
+                "score": "",
+                "prompt_mode": prompt_mode,
+                "error_type": error_type,
+            }
+        )
+
+    return export_entries
+
+
+def write_csv_results(
+    csv_path: Path,
+    rows: list[dict],
+) -> None:
     fieldnames = [
-        "mode",
         "content_id",
         "title",
         "year",
         "basic_description",
         "existing_genres",
-        "detailed_genres",
-        "mood_tone_descriptors",
-        "key_themes",
-        "target_audience",
-        "similar_content_suggestions",
-        "content_warnings",
-        "viewing_context_recommendations",
-        "judge_score",
+        "ENRICHED_detailed_genres",
+        "ENRICHED_mood",
+        "ENRICHED_themes",
+        "ENRICHED_target_audience",
+        "ENRICHED_similar_content_suggestions",
+        "ENRICHED_content_warnings",
+        "ENRICHED_viewing_context",
+        "score",
+        "prompt_mode",
+        "error_type",
     ]
 
     with csv_path.open("w", encoding="utf-8", newline="") as file_handle:
         writer = csv.DictWriter(file_handle, fieldnames=fieldnames)
         writer.writeheader()
 
-        for result in results:
-            metadata = result["metadata"]
-            judge = result["judge"]
+        for row in rows:
+            metadata = row["enriched_metadata"]
             writer.writerow(
                 {
-                    "mode": run_summary["mode"],
-                    "content_id": result["content_id"],
-                    "title": result["title"],
-                    "year": result["year"] or "",
-                    "basic_description": result["basic_description"],
-                    "existing_genres": join_list(result["existing_genres"]),
-                    "detailed_genres": join_list(metadata["detailed_genres"]),
-                    "mood_tone_descriptors": join_list(
-                        metadata["mood_tone_descriptors"]
+                    "content_id": row["content_id"],
+                    "title": row["title"],
+                    "year": row["year"] or "",
+                    "basic_description": row["basic_description"],
+                    "existing_genres": (
+                        join_list(row["existing_genres"])
+                        if isinstance(row["existing_genres"], list)
+                        else row["existing_genres"]
                     ),
-                    "key_themes": join_list(metadata["key_themes"]),
-                    "target_audience": join_list(metadata["target_audience"]),
-                    "similar_content_suggestions": join_list(
+                    "ENRICHED_detailed_genres": join_list(metadata["detailed_genres"]),
+                    "ENRICHED_mood": join_list(metadata["mood"]),
+                    "ENRICHED_themes": join_list(metadata["themes"]),
+                    "ENRICHED_target_audience": join_list(metadata["target_audience"]),
+                    "ENRICHED_similar_content_suggestions": join_list(
                         metadata["similar_content_suggestions"]
                     ),
-                    "content_warnings": join_list(metadata["content_warnings"]),
-                    "viewing_context_recommendations": join_list(
-                        metadata["viewing_context_recommendations"]
+                    "ENRICHED_content_warnings": join_list(
+                        metadata["content_warnings"]
                     ),
-                    "judge_score": judge["score"],
+                    "ENRICHED_viewing_context": join_list(
+                        metadata["viewing_context"]
+                    ),
+                    "score": row["score"],
+                    "prompt_mode": row["prompt_mode"],
+                    "error_type": row["error_type"],
                 }
             )
 
@@ -748,8 +898,6 @@ def persist_results(
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "source_filename": source_filename,
         "provider_label": PROVIDER_LABELS[provider],
-        "mode": mode,
-        "mode_label": MODE_LABELS[mode],
         "raw_item_count": raw_item_count,
         "selected_item_count": selected_item_count,
         "processed_count": len(results),
@@ -758,13 +906,24 @@ def persist_results(
     }
 
     export_results = build_export_results(
-        [{**result, "mode": mode} for result in results]
+        [{**result, "prompt_mode": mode} for result in results]
     )
+    export_validation_errors = build_export_error_entries(
+        validation_errors,
+        prompt_mode=mode,
+        error_type="validation",
+    )
+    export_processing_errors = build_export_error_entries(
+        processing_errors,
+        prompt_mode=mode,
+        error_type="processing",
+    )
+    csv_rows = export_results + export_validation_errors + export_processing_errors
 
     json_payload = {
         **summary,
-        "validation_errors": validation_errors,
-        "processing_errors": processing_errors,
+        "validation_errors": export_validation_errors,
+        "processing_errors": export_processing_errors,
         "results": export_results,
     }
 
@@ -774,7 +933,7 @@ def persist_results(
         json.dumps(json_payload, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    write_csv_results(csv_path, results, summary)
+    write_csv_results(csv_path, csv_rows)
 
     return {
         **summary,
@@ -782,7 +941,7 @@ def persist_results(
             "json": f"/downloads/{run_id}/{json_path.name}",
             "csv": f"/downloads/{run_id}/{csv_path.name}",
         },
-        "preview": results[:5],
+        "preview": export_results[:5],
         "validation_errors_preview": validation_errors[:5],
         "processing_errors_preview": processing_errors[:5],
     }
@@ -803,7 +962,8 @@ def index():
     return render_template(
         "index.html",
         mode_labels=MODE_LABELS,
-        mode_prompts=MODE_PROMPTS,
+        mode_prompts=METADATA_ENRICHMENT_SYSTEM_PROMPT,
+        mode_prompt_sections=MODE_PROMPT_SECTIONS,
         process_steps=PROCESS_STEPS,
         provider_name=provider_name,
         model_name=model_name,
