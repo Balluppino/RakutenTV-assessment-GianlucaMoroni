@@ -271,18 +271,13 @@ function renderResults(job) {
   }
 
   dom.resultsPanel.innerHTML =
-    '<div class="placeholder">Waiting for results...</div>';
+    '<div class="placeholder">Metadata enrichment is still in progress...</div>';
 }
 
 function renderJob(job) {
   state.latestJob = job;
 
-  const completedSteps = job.steps.filter((step) => step.state === "completed").length;
-  const activeBoost = job.status === "completed" ? 0 : 0.5;
-  const progress = Math.min(
-    100,
-    ((completedSteps + activeBoost) / processSteps.length) * 100
-  );
+  const progress = Math.max(0, Math.min(100, Number(job.progress_percent || 0)));
   dom.progressBar.style.width = `${progress}%`;
   if (dom.progressText) {
     dom.progressText.textContent = `${Math.round(progress)}%`;
