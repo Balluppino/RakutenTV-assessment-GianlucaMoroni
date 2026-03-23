@@ -225,7 +225,7 @@ def get_configured_provider() -> str:
 
     if configured_provider:
         if configured_provider not in PROVIDER_LABELS:
-            raise ValueError("LLM_PROVIDER must be either 'openai' or 'google'.")
+            raise ValueError("LLM_PROVIDER must be either 'openai' or 'google'. Restart the server after fixing the .env file.")
         if configured_provider == "openai" and not has_openai_key:
             raise ValueError(
                 "LLM_PROVIDER is set to 'openai' but OPENAI_API_KEY is missing or invalid. Restart the server after fixing the .env file."
