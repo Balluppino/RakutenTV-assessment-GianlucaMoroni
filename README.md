@@ -91,6 +91,8 @@ python backend/app.py
 5. Discover what are the background steps.
 6. Review the preview cards and download the output files.
 
+<img width="1822" height="907" alt="image" src="https://github.com/user-attachments/assets/ef190b11-fdbe-42a8-8353-127c99a02eb0" />
+
 ## Technology rationale
 
 - **HTML/CSS/JavaScript**: frontend for file upload, polling, progress tracking, and result rendering.
